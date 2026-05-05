@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多智能体对话平台</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      background: #f0f2f5;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ========== 顶栏 ========== */
+    .topbar {
+      background: #1677ff;
+      color: #fff;
+      padding: 0 24px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .topbar h1 { font-size: 18px; font-weight: 600; }
+    .topbar .user-info { font-size: 14px; display: flex; align-items: center; gap: 12px; }
+    .topbar button {
+      background: rgba(255,255,255,0.2);
+      border: none; color: #fff;
+      padding: 4px 12px; border-radius: 4px;
+      cursor: pointer; font-size: 13px;
+    }
+    .topbar button:hover { background: rgba(255,255,255,0.35); }
+
+    /* ========== 主布局 ========== */
+    .main-layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ========== 左侧导航 ========== */
+    .sidebar {
+      width: 200px;
+      background: #fff;
+      border-right: 1px solid #e8e8e8;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .nav-item {
+      padding: 14px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #333;
+      border-left: 3px solid transparent;
+      transition: all .2s;
+    }
+    .nav-item:hover { background: #f5f5f5; }
+    .nav-item.active { background: #e8f4ff; color: #1677ff; border-left-color: #1677ff; font-weight: 600; }
+    .nav-icon { margin-right: 8px; }
+
+    /* ========== 内容区 ========== */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* ========== 登录页 ========== */
+    .login-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f0f2f5;
+    }
+    .login-box {
+      background: #fff;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 16px rgba(0,0,0,.1);
+      width: 360px;
+    }
+    .login-box h2 { text-align: center; margin-bottom: 28px; color: #1677ff; font-size: 22px; }
+    .login-tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #e8e8e8; }
+    .login-tab {
+      flex: 1; text-align: center; padding: 8px;
+      cursor: pointer; font-size: 14px; color: #666;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .login-tab.active { color: #1677ff; border-bottom-color: #1677ff; font-weight: 600; }
+
+    /* ========== 通用表单 ========== */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 8px 12px;
+      border: 1px solid #d9d9d9; border-radius: 6px;
+      font-size: 14px; outline: none; transition: border .2s;
+      font-family: inherit;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      border-color: #1677ff;
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+
+    /* ========== 按钮 ========== */
+    .btn {
+      padding: 8px 20px; border: none; border-radius: 6px;
+      cursor: pointer; font-size: 14px; font-family: inherit;
+      transition: all .2s;
+    }
+    .btn-primary { background: #1677ff; color: #fff; }
+    .btn-primary:hover { background: #0958d9; }
+    .btn-primary:disabled { background: #91caff; cursor: not-allowed; }
+    .btn-danger { background: #ff4d4f; color: #fff; }
+    .btn-danger:hover { background: #cf1322; }
+    .btn-default { background: #fff; color: #333; border: 1px solid #d9d9d9; }
+    .btn-default:hover { border-color: #1677ff; color: #1677ff; }
+    .btn-block { width: 100%; }
+
+    /* ========== 卡片 ========== */
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .card-title {
+      font-size: 16px; font-weight: 600;
+      margin-bottom: 16px; color: #222;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* ========== 列表项 ========== */
+    .list-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid #f5f5f5;
+      font-size: 14px;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-item-title { font-weight: 500; color: #222; }
+    .list-item-sub { font-size: 12px; color: #999; margin-top: 2px; }
+    .list-item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    /* ========== 对话框 ========== */
+    .chat-layout {
+      display: flex;
+      height: calc(100vh - 52px);
+      overflow: hidden;
+    }
+    .conv-list {
+      width: 220px;
+      border-right: 1px solid #e8e8e8;
+      background: #fff;
+      display: flex; flex-direction: column;
+      flex-shrink: 0;
+    }
+    .conv-list-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e8e8e8;
+      font-weight: 600; font-size: 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .conv-item {
+      padding: 12px 16px; cursor: pointer;
+      font-size: 13px; color: #444;
+      border-bottom: 1px solid #f5f5f5;
+      transition: background .15s;
+    }
+    .conv-item:hover { background: #f5f5f5; }
+    .conv-item.active { background: #e8f4ff; color: #1677ff; font-weight: 500; }
+    .conv-item-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conv-item-time { font-size: 11px; color: #bbb; margin-top: 2px; }
+
+    .chat-main {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .chat-header {
+      padding: 12px 20px; background: #fff;
+      border-bottom: 1px solid #e8e8e8;
+      font-weight: 600; font-size: 15px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .chat-messages {
+      flex: 1; overflow-y: auto;
+      padding: 20px; display: flex; flex-direction: column; gap: 16px;
+      background: #f7f8fa;
+    }
+    .msg { display: flex; gap: 10px; max-width: 75%; }
+    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg-bubble {
+      padding: 10px 14px; border-radius: 12px;
+      font-size: 14px; line-height: 1.6; word-break: break-word;
+    }
+    .msg.assistant .msg-bubble { background: #fff; border: 1px solid #e8e8e8; color: #222; border-radius: 2px 12px 12px 12px; }
+    .msg.user .msg-bubble { background: #1677ff; color: #fff; border-radius: 12px 2px 12px 12px; }
+    .msg-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .msg.assistant .msg-avatar { background: #e8f4ff; color: #1677ff; }
+    .msg.user .msg-avatar { background: #1677ff; color: #fff; }
+    .chat-input-bar {
+      padding: 12px 16px; background: #fff;
+      border-top: 1px solid #e8e8e8;
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    .chat-input-bar textarea {
+      flex: 1; border: 1px solid #d9d9d9; border-radius: 8px;
+      padding: 10px 12px; font-size: 14px; resize: none;
+      outline: none; font-family: inherit;
+      max-height: 120px;
+    }
+    .chat-input-bar textarea:focus { border-color: #1677ff; }
+
+    /* ========== 标签 ========== */
+    .tag {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 4px; font-size: 12px;
+    }
+    .tag-blue { background: #e8f4ff; color: #1677ff; }
+    .tag-green { background: #f6ffed; color: #52c41a; }
+
+    /* ========== 提示消息 ========== */
+    .toast {
+      position: fixed; top: 70px; right: 24px;
+      padding: 10px 20px; border-radius: 6px;
+      font-size: 14px; z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0,0,0,.15);
+      transition: opacity .3s;
+    }
+    .toast-success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+    .toast-error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+
+    /* ========== 空状态 ========== */
+    .empty { text-align: center; padding: 60px 0; color: #bbb; font-size: 14px; }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+    /* ========== 加载 ========== */
+    .loading { color: #1677ff; font-size: 13px; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+    #chatPage { display: none; }
+    #chatPage.active { display: flex; }
+  </style>
+</head>
+<body>
+
+<!-- ===== 登录页 ===== -->
+<div id="loginPage" class="login-wrap">
+  <div class="login-box">
+    <h2>🤖 智能对话平台</h2>
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="switchLoginTab('login')">登录</div>
+      <div class="login-tab" onclick="switchLoginTab('register')">注册</div>
+    </div>
+
+    <div id="loginForm">
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="loginUsername" placeholder="请输入用户名">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="请输入密码">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()">登 录</button>
+    </div>
+
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="regUsername" placeholder="请输入用户名">
+      </div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="请输入邮箱">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="regPassword" placeholder="请输入密码（不超过72字符）">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doRegister()">注 册</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 主界面 ===== -->
+<div id="mainPage" style="display:none; flex-direction:column; height:100vh;">
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <h1>🤖 多智能体对话与知识问答平台</h1>
+    <div class="user-info">
+      <span id="topUsername"></span>
+      <button onclick="doLogout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <!-- 侧边导航 -->
+    <div class="sidebar">
+      <div class="nav-item active" onclick="showPage('chat')">
+        <span class="nav-icon">💬</span>对话
+      </div>
+      <div class="nav-item" onclick="showPage('agent')">
+        <span class="nav-icon">🤖</span>Agent管理
+      </div>
+      <div class="nav-item" onclick="showPage('kb')">
+        <span class="nav-icon">📚</span>知识库
+      </div>
+    </div>
+
+    <!-- 对话页 -->
+    <div id="chatPage" class="chat-layout page active">
+      <!-- 左侧会话列表 -->
+      <div class="conv-list">
+        <div class="conv-list-header">
+          <span>会话列表</span>
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:12px" onclick="showNewConvModal()">+ 新建</button>
+        </div>
+        <div id="convListBody"></div>
+      </div>
+
+      <!-- 右侧聊天主区 -->
+      <div class="chat-main">
+        <div class="chat-header" id="chatHeader">
+          <span>请选择或新建一个会话</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="empty">
+            <div class="empty-icon">💬</div>
+            <div>选择左侧会话开始对话</div>
+          </div>
+        </div>
+        <div class="chat-input-bar">
+          <div class="form-group" style="margin:0;flex:0 0 160px">
+            <select id="kbSelect" title="选择知识库（可选）">
+              <option value="">不使用知识库</option>
+            </select>
+          </div>
+          <textarea id="chatInput" rows="1" placeholder="输入消息，Ctrl+Enter发送..."
+            onkeydown="if(event.ctrlKey&&event.key==='Enter')sendMsg()"></textarea>
+          <button class="btn btn-primary" id="sendBtn" onclick="sendMsg()">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent管理页 -->
+    <div id="agentPage" class="page content">
+      <div class="card">
+        <div class="card-title">
+          <span>🤖 Agent 列表</span>
+          <button class="btn btn-primary" onclick="showAgentModal()">+ 创建 Agent</button>
+        </div>
+        <div id="agentListBody"><div class="empty"><div class="empty-icon">🤖</div><div>暂无Agent，点击右上角创建</div></div></div>
+      </div>
+
+      <!-- 创建Agent表单 -->
+      <div id="agentModal" class="card" style="display:none">
+        <div class="card-title">创建自定义 Agent</div>
+        <div class="form-group">
+          <label>Agent ID（唯一标识，英文）</label>
+          <input type="text" id="agentId" placeholder="如：sql_helper">
+        </div>
+        <div class="form-group">
+          <label>显示名称</label>
+          <input type="text" id="agentName" placeholder="如：SQL助手">
+        </div>
+        <div class="form-group">
+          <label>角色描述（作为 System Prompt）</label>
+          <textarea id="agentDesc" placeholder="如：你是一个专业的SQL助手，帮助用户编写和优化SQL查询语句。"></textarea>
+        </div>
+        <div class="form-group">
+          <label>选择工具</label>
+          <div id="toolCheckboxes" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="doCreateAgent()">创建</button>
+          <button class="btn btn-default" onclick="document.getElementById('agentModal').style.display='none'">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 知识库页 -->
+    <div id="kbPage" class="page content">
+      <div class="card">
+        <div class="card-title">
+          <span>📚 知识库列表</span>
+          <button class="btn btn-primary" onclick="showKbModal()">+ 创建知识库</button>
+        </div>
+        <div id="kbListBody"><div class="empty"><div class="empty-icon">📚</div><div>暂无知识库，点击右上角创建</div></div></div>
+      </div>
+
+      <!-- 创建知识库表单 -->
+      <div id="kbModal" class="card" style="display:none">
+        <div class="card-title">创建知识库</div>
+        <div class="form-group">
+          <label>知识库名称</label>
+          <input type="text" id="kbName" placeholder="如：产品手册">
+        </div>
+        <div class="form-group">
+          <label>描述（可选）</label>
+          <input type="text" id="kbDesc" placeholder="简要描述知识库内容">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="doCreateKb()">创建</button>
+          <button class="btn btn-default" onclick="document.getElementById('kbModal').style.display='none'">取消</button>
+        </div>
+      </div>
+
+      <!-- 文档列表（点击知识库展开） -->
+      <div id="kbDocsPanel" class="card" style="display:none">
+        <div class="card-title">
+          <span id="kbDocTitle">文档列表</span>
+          <label class="btn btn-primary" style="cursor:pointer">
+            📎 上传文档
+            <input type="file" id="uploadFileInput" accept=".pdf,.docx,.doc,.md"
+              style="display:none" onchange="doUploadFile()">
+          </label>
+        </div>
+        <div id="kbDocsBody"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 新建会话弹窗 -->
+<div id="newConvOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:none;align-items:center;justify-content:center">
+  <div style="background:#fff;padding:28px;border-radius:8px;width:380px">
+    <div style="font-size:16px;font-weight:600;margin-bottom:16px">新建会话</div>
+    <div class="form-group">
+      <label>会话标题</label>
+      <input type="text" id="newConvTitle" placeholder="新对话">
+    </div>
+    <div class="form-group">
+      <label>绑定 Agent（可选）</label>
+      <select id="newConvAgent">
+        <option value="">不绑定Agent（普通对话）</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-default" onclick="hideNewConvModal()">取消</button>
+      <button class="btn btn-primary" onclick="doCreateConv()">创建</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  全局状态
+// ============================================================
+const API = 'http://127.0.0.1:8000'
+let token = localStorage.getItem('token') || ''
+let currentUser = null
+let currentConvId = null
+let currentKbId = null
+
+// ============================================================
+//  工具函数
+// ============================================================
+function toast(msg, type = 'success') {
+  const el = document.createElement('div')
+  el.className = `toast toast-${type}`
+  el.textContent = msg
+  document.body.appendChild(el)
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300) }, 2500)
+}
+
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(API + path, { ...options, headers })
+  if (res.status === 401) { doLogout(); return null }
+  return res
+}
+
+function fmtTime(s) {
+  if (!s) return ''
+  return s.replace('T', ' ').substring(0, 16)
+}
+
+// ============================================================
+//  登录 / 注册 / 登出
+// ============================================================
+function switchLoginTab(tab) {
+  document.querySelectorAll('.login-tab').forEach((el, i) => {
+    el.classList.toggle('active', (i === 0) === (tab === 'login'))
+  })
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none'
+  document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none'
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim()
+  const password = document.getElementById('loginPassword').value.trim()
+  if (!username || !password) return toast('请填写用户名和密码', 'error')
+
+  const res = await fetch(`${API}/api/users/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  })
+  const data = await res.json()
+  if (!res.ok) return toast(data.detail || '登录失败', 'error')
+
+  token = data.access_token
+  localStorage.setItem('token', token)
+  await initMain(username)
+}
+
+async function doRegister() {
+  const username = document.getElementById('regUsername').value.trim()
+  const email = document.getElementById('regEmail').value.trim()
+  const password = document.getElementById('regPassword').value.trim()
+  if (!username || !email || !password) return toast('请填写完整信息', 'error')
+
+  const res = await fetch(`${API}/api/users/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, email, password })
+  })
+  const data = await res.json()
+  if (!res.ok) return toast(data.detail || '注册失败', 'error')
+  toast('注册成功，请登录')
+  switchLoginTab('login')
+  document.getElementById('loginUsername').value = username
+}
+
+async function initMain(username) {
+  document.getElementById('loginPage').style.display = 'none'
+  document.getElementById('mainPage').style.display = 'flex'
+  document.getElementById('topUsername').textContent = `👤 ${username}`
+  currentUser = username
+  await loadConversations()
+  await loadAgents()
+  await loadKbs()
+}
+
+function doLogout() {
+  token = ''; localStorage.removeItem('token')
+  document.getElementById('loginPage').style.display = 'flex'
+  document.getElementById('mainPage').style.display = 'none'
+  currentConvId = null
+}
+
+// 页面刷新后自动恢复登录
+window.onload = async () => {
+  if (token) {
+    const res = await api('/api/users/me')
+    if (res && res.ok) {
+      const data = await res.json()
+      await initMain(data.username)
+    } else {
+      token = ''; localStorage.removeItem('token')
+    }
+  }
+}
+
+// ============================================================
+//  页面切换
+// ============================================================
+function showPage(name) {
+  document.querySelectorAll('.nav-item').forEach((el, i) => {
+    el.classList.toggle('active', ['chat','agent','kb'][i] === name)
+  })
+  document.querySelectorAll('.page').forEach(el => {
+    el.classList.remove('active')
+    el.style.display = 'none'
+  })
+  const pageMap = { chat: 'chatPage', agent: 'agentPage', kb: 'kbPage' }
+  const el = document.getElementById(pageMap[name])
+  el.style.display = name === 'chat' ? 'flex' : 'block'
+  el.classList.add('active')
+
+  if (name === 'chat') loadConversations()
+  if (name === 'agent') loadAgents()
+  if (name === 'kb') loadKbs()
+}
+
+// ============================================================
+//  会话管理
+// ============================================================
+async function loadConversations() {
+  const res = await api('/api/conversations/')
+  if (!res || !res.ok) return
+  const data = await res.json()
+  const body = document.getElementById('convListBody')
+  if (!data.length) { body.innerHTML = '<div style="padding:20px;text-align:center;color:#bbb;font-size:13px">暂无会话</div>'; return }
+  body.innerHTML = data.map(c => `
+    <div class="conv-item ${c.id === currentConvId ? 'active' : ''}" onclick="selectConv(${c.id},'${c.title}')">
+      <div class="conv-item-title">${c.title}</div>
+      <div class="conv-item-time">${fmtTime(c.created_at)}</div>
+    </div>
+  `).join('')
+}
+
+async function selectConv(id, title) {
+  currentConvId = id
+  document.getElementById('chatHeader').innerHTML = `<span>💬 ${title}</span>`
+  await loadConversations()
+  await loadMessages(id)
+}
+
+async function loadMessages(convId) {
+  const msgBox = document.getElementById('chatMessages')
+  msgBox.innerHTML = '<div class="loading" style="text-align:center;padding:20px">加载中...</div>'
+  const res = await api(`/api/conversations/${convId}/messages`)
+  if (!res || !res.ok) return
+  const msgs = await res.json()
+  renderMessages(msgs)
+}
+
+function renderMessages(msgs) {
+  const msgBox = document.getElementById('chatMessages')
+  if (!msgs.length) {
+    msgBox.innerHTML = '<div class="empty"><div class="empty-icon">✨</div><div>开始对话吧</div></div>'
+    return
+  }
+  msgBox.innerHTML = msgs.map(m => `
+    <div class="msg ${m.role}">
+      <div class="msg-avatar">${m.role === 'user' ? '我' : '🤖'}</div>
+      <div class="msg-bubble">${m.content.replace(/\n/g, '<br>')}</div>
+    </div>
+  `).join('')
+  msgBox.scrollTop = msgBox.scrollHeight
+}
+
+async function sendMsg() {
+  if (!currentConvId) return toast('请先选择或创建一个会话', 'error')
+  const input = document.getElementById('chatInput')
+  const content = input.value.trim()
+  if (!content) return
+  const kbId = document.getElementById('kbSelect').value || null
+  const btn = document.getElementById('sendBtn')
+
+  input.value = ''
+  btn.disabled = true
+  btn.textContent = '发送中...'
+
+  // 先追加用户消息到界面
+  const msgBox = document.getElementById('chatMessages')
+  const emptyEl = msgBox.querySelector('.empty')
+  if (emptyEl) emptyEl.remove()
+  msgBox.innerHTML += `
+    <div class="msg user">
+      <div class="msg-avatar">我</div>
+      <div class="msg-bubble">${content.replace(/\n/g, '<br>')}</div>
+    </div>
+    <div class="msg assistant" id="thinkingMsg">
+      <div class="msg-avatar">🤖</div>
+      <div class="msg-bubble loading">思考中...</div>
+    </div>
+  `
+  msgBox.scrollTop = msgBox.scrollHeight
+
+  const body = { content }
+  if (kbId) body.kb_id = parseInt(kbId)
+
+  const res = await api(`/api/conversations/${currentConvId}/chat`, {
+    method: 'POST', body: JSON.stringify(body)
+  })
+
+  document.getElementById('thinkingMsg')?.remove()
+  btn.disabled = false
+  btn.textContent = '发送'
+
+  if (!res || !res.ok) { toast('发送失败', 'error'); return }
+  const reply = await res.json()
+  msgBox.innerHTML += `
+    <div class="msg assistant">
+      <div class="msg-avatar">🤖</div>
+      <div class="msg-bubble">${reply.content.replace(/\n/g, '<br>')}</div>
+    </div>
+  `
+  msgBox.scrollTop = msgBox.scrollHeight
+}
+
+// ============================================================
+//  新建会话弹窗
+// ============================================================
+function showNewConvModal() {
+  loadAgentsForSelect()
+  document.getElementById('newConvTitle').value = ''
+  document.getElementById('newConvOverlay').style.display = 'flex'
+}
+function hideNewConvModal() {
+  document.getElementById('newConvOverlay').style.display = 'none'
+}
+
+async function loadAgentsForSelect() {
+  const res = await api('/api/agents/')
+  if (!res || !res.ok) return
+  const agents = await res.json()
+  const sel = document.getElementById('newConvAgent')
+  sel.innerHTML = '<option value="">不绑定Agent（普通对话）</option>'
+  agents.forEach(a => {
+    sel.innerHTML += `<option value="${a.agent_id}">${a.name}</option>`
+  })
+}
+
+async function doCreateConv() {
+  const title = document.getElementById('newConvTitle').value.trim() || '新对话'
+  const agentId = document.getElementById('newConvAgent').value || null
+  const body = { title }
+  if (agentId) body.agent_id = agentId
+  const res = await api('/api/conversations/', { method: 'POST', body: JSON.stringify(body) })
+  if (!res || !res.ok) return toast('创建失败', 'error')
+  const conv = await res.json()
+  hideNewConvModal()
+  toast('会话创建成功')
+  await loadConversations()
+  selectConv(conv.id, conv.title)
+}
+
+// ============================================================
+//  Agent 管理
+// ============================================================
+async function loadAgents() {
+  const res = await api('/api/agents/')
+  if (!res || !res.ok) return
+  const agents = await res.json()
+  const body = document.getElementById('agentListBody')
+  if (!agents.length) {
+    body.innerHTML = '<div class="empty"><div class="empty-icon">🤖</div><div>暂无Agent，点击右上角创建</div></div>'
+    return
+  }
+  body.innerHTML = agents.map(a => `
+    <div class="list-item">
+      <div>
+        <div class="list-item-title">${a.name} <span class="tag tag-blue">${a.agent_id}</span></div>
+        <div class="list-item-sub">${a.description.substring(0, 60)}${a.description.length > 60 ? '...' : ''}</div>
+        <div style="margin-top:4px">${a.tools.map(t => `<span class="tag tag-green" style="margin-right:4px">${t}</span>`).join('')}</div>
+      </div>
+      <div class="list-item-actions">
+        <button class="btn btn-danger" onclick="doDeleteAgent('${a.agent_id}')">删除</button>
+      </div>
+    </div>
+  `).join('')
+}
+
+async function showAgentModal() {
+  // 加载可用工具
+  const res = await api('/api/agents/tools')
+  if (!res || !res.ok) return
+  const { tools } = await res.json()
+  const wrap = document.getElementById('toolCheckboxes')
+  wrap.innerHTML = tools.map(t => `
+    <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+      <input type="checkbox" value="${t}"> ${t}
+    </label>
+  `).join('')
+  document.getElementById('agentModal').style.display = 'block'
+}
+
+async function doCreateAgent() {
+  const agent_id = document.getElementById('agentId').value.trim()
+  const name = document.getElementById('agentName').value.trim()
+  const description = document.getElementById('agentDesc').value.trim()
+  const tools = [...document.querySelectorAll('#toolCheckboxes input:checked')].map(el => el.value)
+  if (!agent_id || !name || !description) return toast('请填写完整信息', 'error')
+
+  const res = await api('/api/agents/', {
+    method: 'POST', body: JSON.stringify({ agent_id, name, description, tools })
+  })
+  if (!res || !res.ok) {
+    const err = await res.json()
+    return toast(err.detail || '创建失败', 'error')
+  }
+  toast('Agent创建成功')
+  document.getElementById('agentModal').style.display = 'none'
+  await loadAgents()
+}
+
+async function doDeleteAgent(agentId) {
+  if (!confirm(`确认删除 Agent "${agentId}"？`)) return
+  const res = await api(`/api/agents/${agentId}`, { method: 'DELETE' })
+  if (!res || !res.ok) return toast('删除失败', 'error')
+  toast('删除成功')
+  await loadAgents()
+}
+
+// ============================================================
+//  知识库管理
+// ============================================================
+async function loadKbs() {
+  const res = await api('/api/knowledge-bases/')
+  if (!res || !res.ok) return
+  const kbs = await res.json()
+
+  // 同步更新知识库下拉选择
+  const kbSel = document.getElementById('kbSelect')
+  kbSel.innerHTML = '<option value="">不使用知识库</option>'
+  kbs.forEach(k => { kbSel.innerHTML += `<option value="${k.id}">${k.name}</option>` })
+
+  const body = document.getElementById('kbListBody')
+  if (!kbs.length) {
+    body.innerHTML = '<div class="empty"><div class="empty-icon">📚</div><div>暂无知识库，点击右上角创建</div></div>'
+    return
+  }
+  body.innerHTML = kbs.map(k => `
+    <div class="list-item">
+      <div>
+        <div class="list-item-title">${k.name}</div>
+        <div class="list-item-sub">${k.description || '暂无描述'} &nbsp;·&nbsp; ${fmtTime(k.created_at)}</div>
+      </div>
+      <div class="list-item-actions">
+        <button class="btn btn-default" onclick="openKbDocs(${k.id},'${k.name}')">查看文档</button>
+        <button class="btn btn-danger" onclick="doDeleteKb(${k.id})">删除</button>
+      </div>
+    </div>
+  `).join('')
+}
+
+function showKbModal() {
+  document.getElementById('kbName').value = ''
+  document.getElementById('kbDesc').value = ''
+  document.getElementById('kbModal').style.display = 'block'
+}
+
+async function doCreateKb() {
+  const name = document.getElementById('kbName').value.trim()
+  const description = document.getElementById('kbDesc').value.trim()
+  if (!name) return toast('请填写知识库名称', 'error')
+  const res = await api('/api/knowledge-bases/', {
+    method: 'POST', body: JSON.stringify({ name, description })
+  })
+  if (!res || !res.ok) return toast('创建失败', 'error')
+  toast('知识库创建成功')
+  document.getElementById('kbModal').style.display = 'none'
+  await loadKbs()
+}
+
+async function doDeleteKb(kbId) {
+  if (!confirm('确认删除该知识库？其中所有文档将同时删除。')) return
+  const res = await api(`/api/knowledge-bases/${kbId}`, { method: 'DELETE' })
+  if (!res || !res.ok) return toast('删除失败', 'error')
+  toast('删除成功')
+  document.getElementById('kbDocsPanel').style.display = 'none'
+  await loadKbs()
+}
+
+async function openKbDocs(kbId, kbName) {
+  currentKbId = kbId
+  document.getElementById('kbDocTitle').textContent = `📄 ${kbName} - 文档列表`
+  document.getElementById('kbDocsPanel').style.display = 'block'
+  await loadDocs(kbId)
+}
+
+async function loadDocs(kbId) {
+  const res = await api(`/api/knowledge-bases/${kbId}/documents`)
+  if (!res || !res.ok) return
+  const docs = await res.json()
+  const body = document.getElementById('kbDocsBody')
+  if (!docs.length) {
+    body.innerHTML = '<div class="empty"><div class="empty-icon">📄</div><div>暂无文档，点击右上角上传</div></div>'
+    return
+  }
+  body.innerHTML = docs.map(d => `
+    <div class="list-item">
+      <div>
+        <div class="list-item-title">📄 ${d.filename} <span class="tag tag-blue">${d.file_type}</span></div>
+        <div class="list-item-sub">分块数：${d.chunk_count} &nbsp;·&nbsp; ${fmtTime(d.created_at)}</div>
+      </div>
+    </div>
+  `).join('')
+}
+
+async function doUploadFile() {
+  if (!currentKbId) return toast('请先选择知识库', 'error')
+  const fileInput = document.getElementById('uploadFileInput')
+  const file = fileInput.files[0]
+  if (!file) return
+  toast('正在上传并解析文档，请稍候...')
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const res = await fetch(`${API}/api/knowledge-bases/${currentKbId}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData
+  })
+  fileInput.value = ''
+  if (!res.ok) {
+    const err = await res.json()
+    return toast(err.detail || '上传失败', 'error')
+  }
+  const doc = await res.json()
+  toast(`上传成功！共分块 ${doc.chunk_count} 段`)
+  await loadDocs(currentKbId)
+}
+</script>
+
+</body>
+</html>
