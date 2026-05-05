@@ -2,7 +2,6 @@ import os
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
-# 强制加载 .env 文件（双保险）
 load_dotenv(override=True)
 
 
